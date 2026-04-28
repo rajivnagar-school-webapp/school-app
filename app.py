@@ -63,7 +63,7 @@ def upload_doc_base64(student_id, doc_name, file_obj):
 
 def get_students_with_att(class_name=None):
     if class_name:
-        res = supabase.table('students').select('*').eq('class', class_name).order('roll_no').execute()
+        res = supabase.table('students').select('*').ilike('class', class_name).order('roll_no').execute()
     else:
         res = supabase.table('students').select('*').order('class').execute()
     students = res.data or []
@@ -1019,10 +1019,162 @@ def download_parinam():
     if not logged_in() or not is_teacher(): return redirect(url_for('login'))
     return _generate_parinam_excel(session['class'], request.args.get('semester', '1'))
 
+from datetime import date, timedelta
+import io
+from flask import send_file, redirect, url_for
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+
+@app.route('/teacher/download/attendance-30days')
+def teacher_download_attendance_30days():
+    if not logged_in() or not is_teacher():
+        return redirect(url_for('login'))
+
+    my_class = session['class']
+
+    # 🔹 Students
+    students = supabase.table('students')\
+        .select('*')\
+        .eq('class', my_class)\
+        .order('roll_no')\
+        .execute().data or []
+
+    # 🔹 Date range
+    end_date = date.today()
+    start_date = end_date - timedelta(days=29)
+
+    # 🔹 Attendance
+    all_att = supabase.table('attendance')\
+        .select('*')\
+        .gte('date', str(start_date))\
+        .lte('date', str(end_date))\
+        .execute().data or []
+
+    att_map = {(a['student_id'], a['date']): a['status'] for a in all_att}
+
+    # 🔹 Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Attendance Register"
+
+    # Styles
+    header_font = Font(bold=True, size=14)
+    sub_font = Font(bold=True)
+    center = Alignment(horizontal='center', vertical='center')
+    green_fill = PatternFill("solid", fgColor="C6EFCE")
+    red_fill = PatternFill("solid", fgColor="FFC7CE")
+    thin = Side(style='thin')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # 🔹 Header
+    start_str = start_date.strftime('%d-%m-%Y')
+    end_str = end_date.strftime('%d-%m-%Y')
+
+    ws['A1'] = 'RAJIVNAGAR PRIMARY SCHOOL'
+    ws['A2'] = f'Class: {my_class}'
+    ws['A3'] = 'Attendance Register (Last 30 Days)'
+    ws['A4'] = f'From: {start_str} To: {end_str}'
+
+    for r in range(1, 5):
+        cell = ws[f'A{r}']
+        cell.font = header_font if r == 1 else sub_font
+        cell.alignment = center
+
+    # 🔹 Dates
+    dates = [start_date + timedelta(days=i) for i in range(30)]
+
+    headers = ['Roll', 'Name'] + \
+              [d.strftime('%d %b') for d in dates] + \
+              ['Total', 'Present', 'Absent', '%']
+
+    total_columns = len(headers)
+
+    # Merge header
+    for i in range(1, 5):
+        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=total_columns)
+
+    ws.append([])
+    ws.append(headers)
+
+    header_row = ws.max_row
+
+    # Header styling
+    for col in range(1, total_columns + 1):
+        c = ws.cell(row=header_row, column=col)
+        c.font = Font(bold=True)
+        c.alignment = center
+        c.border = border
+
+    # 🔹 Data fill
+    for s in students:
+        row = [s.get('roll_no'), s.get('name')]
+
+        present = 0
+        total = 0
+
+        for d in dates:
+            d_str = str(d)
+
+            # Sunday skip
+            if d.weekday() == 6:
+                row.append('-')
+                continue
+
+            status = att_map.get((s['id'], d_str), '')
+
+            if status == 'P':
+                present += 1
+                total += 1
+                row.append('P')
+            elif status == 'A':
+                total += 1
+                row.append('A')
+            else:
+                row.append('')
+
+        absent = total - present
+        pct = round((present / total) * 100, 1) if total > 0 else 0
+
+        row += [total, present, absent, f"{pct}%"]
+        ws.append(row)
+
+    # 🔹 Styling data
+    for r in range(header_row + 1, ws.max_row + 1):
+        for c in range(1, total_columns + 1):
+            cell = ws.cell(row=r, column=c)
+            cell.alignment = center
+            cell.border = border
+
+            if cell.value == 'P':
+                cell.fill = green_fill
+            elif cell.value == 'A':
+                cell.fill = red_fill
+
+    # 🔹 Column width
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 25
+
+    for col in range(3, total_columns + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 6
+
+    # 🔹 Save
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'{my_class}_Attendance_Register_30Days.xlsx'
+    )
+
+
 
 # ─────────────────────────────────────────────
 # PRINCIPAL ROUTES
-# ─────────────────────────────────────────────
+# ────────────────────────────────────────────
 
 @app.route('/principal/dashboard')
 def principal_dashboard():
@@ -1191,6 +1343,158 @@ def principal_download_gunslip():
 def principal_download_parinam():
     if not logged_in() or not is_principal(): return redirect(url_for('login'))
     return _generate_parinam_excel(request.args.get('class', 'Class 1'), request.args.get('semester', '1'))
+
+
+from datetime import date, timedelta
+import io
+from flask import send_file, redirect, url_for, request
+from openpyxl import Workbook
+from openpyxl.styles import Font, Alignment, PatternFill, Border, Side
+from openpyxl.utils import get_column_letter
+
+@app.route('/principal/download/attendance-30days')
+def principal_download_attendance_30days():
+    if not logged_in() or not is_principal():
+        return redirect(url_for('login'))
+
+    class_name = request.args.get('class', 'Class 1').strip()
+
+    # 🔹 Students
+    students = supabase.table('students')\
+        .select('*')\
+        .ilike('class', class_name)\
+        .order('roll_no')\
+        .execute().data or []
+
+    # 🔹 Date range
+    end_date = date.today()
+    start_date = end_date - timedelta(days=29)
+
+    # 🔹 Attendance
+    all_att = supabase.table('attendance')\
+        .select('*')\
+        .gte('date', str(start_date))\
+        .lte('date', str(end_date))\
+        .execute().data or []
+
+    att_map = {(a['student_id'], a['date']): a['status'] for a in all_att}
+
+    # 🔹 Workbook
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Attendance Register"
+
+    # Styles
+    header_font = Font(bold=True, size=14)
+    sub_font = Font(bold=True)
+    center = Alignment(horizontal='center', vertical='center')
+    green_fill = PatternFill("solid", fgColor="C6EFCE")
+    red_fill = PatternFill("solid", fgColor="FFC7CE")
+    thin = Side(style='thin')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    # 🔹 Header
+    start_str = start_date.strftime('%d-%m-%Y')
+    end_str = end_date.strftime('%d-%m-%Y')
+
+    ws['A1'] = 'RAJIVNAGAR PRIMARY SCHOOL'
+    ws['A2'] = f'Class: {class_name}'
+    ws['A3'] = 'Attendance Register (Last 30 Days)'
+    ws['A4'] = f'From: {start_str} To: {end_str}'
+
+    for r in range(1, 5):
+        cell = ws[f'A{r}']
+        cell.font = header_font if r == 1 else sub_font
+        cell.alignment = center
+
+    # 🔹 Dates
+    dates = [start_date + timedelta(days=i) for i in range(30)]
+
+    headers = ['Roll', 'Name'] + \
+              [d.strftime('%d %b') for d in dates] + \
+              ['Total', 'Present', 'Absent', '%']
+
+    total_columns = len(headers)
+
+    # Merge header
+    for i in range(1, 5):
+        ws.merge_cells(start_row=i, start_column=1, end_row=i, end_column=total_columns)
+
+    ws.append([])
+    ws.append(headers)
+
+    header_row = ws.max_row
+
+    # Style header row
+    for col in range(1, total_columns + 1):
+        c = ws.cell(row=header_row, column=col)
+        c.font = Font(bold=True)
+        c.alignment = center
+        c.border = border
+
+    # 🔹 Fill Data
+    for s in students:
+        row = [s.get('roll_no'), s.get('name')]
+
+        present = 0
+        total = 0
+
+        for d in dates:
+            d_str = str(d)
+
+            # Sunday skip
+            if d.weekday() == 6:
+                row.append('-')
+                continue
+
+            status = att_map.get((s['id'], d_str), '')
+
+            if status == 'P':
+                present += 1
+                total += 1
+                row.append('P')
+            elif status == 'A':
+                total += 1
+                row.append('A')
+            else:
+                row.append('')
+
+        absent = total - present
+        pct = round((present / total) * 100, 1) if total > 0 else 0
+
+        row += [total, present, absent, f"{pct}%"]
+        ws.append(row)
+
+    # 🔹 Apply styling to data
+    for r in range(header_row + 1, ws.max_row + 1):
+        for c in range(1, total_columns + 1):
+            cell = ws.cell(row=r, column=c)
+            cell.alignment = center
+            cell.border = border
+
+            if cell.value == 'P':
+                cell.fill = green_fill
+            elif cell.value == 'A':
+                cell.fill = red_fill
+
+    # 🔹 Column widths
+    ws.column_dimensions['A'].width = 8
+    ws.column_dimensions['B'].width = 25
+
+    for col in range(3, total_columns + 1):
+        ws.column_dimensions[get_column_letter(col)].width = 6
+
+    # 🔹 Save
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name=f'{class_name}_Attendance_Register_30Days.xlsx'
+    )
 
 
 if __name__ == '__main__':
