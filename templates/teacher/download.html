@@ -37,6 +37,9 @@
 <button class="btn btn-outline" onclick="downloadParinam()">
     <i class="ti ti-file-description"></i> પરિણામ
 </button>
+<button class="btn btn-warning" onclick="downloadLast30Days()">
+    <i class="ti ti-calendar"></i> છેલ્લા 30 દિવસ હાજરી
+</button>
     </div>
 
     <!-- INFO BOXES -->
@@ -371,5 +374,12 @@ function downloadPDF() {
     }
     window.location.href = '/teacher/download/pdf/' + id;
 }
+
+function downloadLast30Days() {
+    if (!confirm("છેલ્લા 30 દિવસની હાજરી ડાઉનલોડ કરશો?")) return;
+
+    window.location.href = '/teacher/download/attendance-30days';
+}
+
 </script>
 {% endblock %}
