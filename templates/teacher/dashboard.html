@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+{% block title %}ડેશબોર્ડ - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">ડેશબોર્ડ — {{ session.class }}</h2>
+        <p class="page-subtitle">તમારા ધોરણની આજની પ્રવૃત્તિ જુઓ</p>
+    </div>
+    <span class="date-badge">📅 {{ today }}</span>
+</div>
+
+<!-- STATISTICS GRID -->
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#dbeafe;border-color:#1e293b;">
+            <i class="ti ti-users" style="color:#1d4ed8;"></i>
+        </div>
+        <div class="stat-label">કુલ વિદ્યાર્થીઓ</div>
+        <div class="stat-value">{{ total }}</div>
+        <div class="stat-sub">{{ session.class }}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#dcfce7;border-color:#1e293b;">
+            <i class="ti ti-circle-check" style="color:#15803d;"></i>
+        </div>
+        <div class="stat-label">આજે હાજર</div>
+        <div class="stat-value green">{{ present }}</div>
+        <div class="stat-sub">{% if total > 0 %}{{ ((present/total)*100)|round|int }}%{% else %}૦%{% endif %}</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fee2e2;border-color:#1e293b;">
+            <i class="ti ti-circle-x" style="color:#b91c1c;"></i>
+        </div>
+        <div class="stat-label">આજે ગેરહાજર</div>
+        <div class="stat-value red">{{ absent }}</div>
+        <div class="stat-sub">ગેરહાજર</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon" style="background:#fef9c3;border-color:#1e293b;">
+            <i class="ti ti-alert-triangle" style="color:#a16207;"></i>
+        </div>
+        <div class="stat-label">ઓછી હાજરી</div>
+        <div class="stat-value yellow">{{ low_count }}</div>
+        <div class="stat-sub">૭૫% થી ઓછી</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">ઝડપી કામ</div>
+    <div class="quick-grid">
+        <a href="/teacher/attendance" class="quick-btn">
+            <span class="ico ico-green ico-lg"><i class="ti ti-clipboard-check"></i></span>
+            હાજરી ભરો
+        </a>
+        <a href="/teacher/students" class="quick-btn">
+            <span class="ico ico-orange ico-lg"><i class="ti ti-users"></i></span>
+            વિદ્યાર્થીઓ
+        </a>
+        <a href="/teacher/subjects" class="quick-btn">
+            <span class="ico ico-purple ico-lg"><i class="ti ti-books"></i></span>
+            વિષયો
+        </a>
+        <a href="/teacher/marks" class="quick-btn">
+            <span class="ico ico-teal ico-lg"><i class="ti ti-pencil"></i></span>
+            ગુણ એન્ટ્રી
+        </a>
+    </div>
+</div>
+
+<!-- LOW ATTENDANCE WARNING -->
+{% if low_list %}
+<div class="card card-alert">
+    <div class="card-title card-title-alert">
+        <span>⚠️ ઓછી હાજરીવાળા વિદ્યાર્થીઓ</span>
+        <span class="badge badge-red">{{ low_count }}</span>
+    </div>
+    <div class="table-responsive">
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>ક્રમ</th>
+                    <th>નામ</th>
+                    <th>હાજરી %</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in low_list %}
+                <tr>
+                    <td>
+                        <span class="table-cell-badge">{{ s.roll }}</span>
+                    </td>
+                    <td>
+                        <span class="table-cell-text">{{ s.name }}</span>
+                    </td>
+                    <td>
+                        <span class="badge badge-red">{{ s.pct }}%</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endif %}
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* STAT CARD ENHANCEMENTS */
+    .stat-card {
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .stat-card-icon {
+        width: 56px;
+        height: 56px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    .stat-card-content {
+        flex: 1;
+    }
+
+    /* QUICK GRID ENHANCEMENTS */
+    .quick-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px 16px;
+        background: white;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        text-decoration: none;
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        box-shadow: var(--shadow-xs);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quick-btn::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: linear-gradient(135deg, rgba(26, 79, 138, 0.05) 0%, transparent 100%);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .quick-btn:hover {
+        border-color: var(--primary-lighter);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .quick-btn:hover::before {
+        opacity: 1;
+    }
+
+    .quick-btn-icon {
+        font-size: 32px;
+        display: block;
+    }
+
+    .quick-btn-label {
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .quick-btn-arrow {
+        font-size: 14px;
+        color: var(--primary);
+        opacity: 0;
+        transform: translateX(-4px);
+        transition: var(--transition);
+    }
+
+    .quick-btn:hover .quick-btn-arrow {
+        opacity: 1;
+        transform: translateX(0);
+    }
+
+    /* CARD ALERT STYLING */
+    .card-alert {
+        border-left: 4px solid var(--red);
+        background: linear-gradient(to right, rgba(220, 38, 38, 0.02), transparent);
+    }
+
+    .card-title-alert {
+        color: var(--red);
+    }
+
+    /* TABLE CELL STYLING */
+    .table-cell-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        border-radius: 8px;
+        background: var(--primary-light);
+        color: white;
+        font-weight: 600;
+        font-size: 13px;
+    }
+
+    .table-cell-text {
+        font-weight: 500;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+    }
+
+    /* RESPONSIVE */
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+
+        .quick-grid {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .quick-btn {
+            padding: 20px 12px;
+        }
+
+        .quick-btn-icon {
+            font-size: 28px;
+        }
+
+        .quick-btn-label {
+            font-size: 13px;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .stat-card {
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+
+        .stat-card-content {
+            width: 100%;
+        }
+    }
+</style>
+{% endblock %}

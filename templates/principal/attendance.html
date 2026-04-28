@@ -1,0 +1,741 @@
+{% extends 'base.html' %}
+{% block title %}હાજરી - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">📋 હાજરી</h2>
+        <p class="page-subtitle">તમામ ધોરણની હાજરી દાખલ કરો</p>
+    </div>
+    <span class="date-badge">📅 {{ today }}</span>
+</div>
+
+<!-- CLASS FILTERS -->
+<div class="class-filter-section">
+    <label class="filter-label">ધોરણ પસંદ કરો</label>
+    <div class="class-filters">
+        {% for cls in classes %}
+        <a href="/principal/attendance?class={{ cls }}" 
+           class="class-filter-btn {% if class_filter==cls %}active{% endif %}"
+           title="{{ cls }}">
+            {{ cls.replace('Class ','ધો. ') }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ATTENDANCE COUNTERS -->
+<div class="attendance-counters">
+    <div class="counter-card present">
+        <div class="counter-icon">✓</div>
+        <div class="counter-content">
+            <div class="counter-label">હાજર</div>
+            <div class="counter-value" id="pCount">0</div>
+        </div>
+    </div>
+    <div class="counter-card absent">
+        <div class="counter-icon">✗</div>
+        <div class="counter-content">
+            <div class="counter-label">ગેરહાજર</div>
+            <div class="counter-value" id="aCount">0</div>
+        </div>
+    </div>
+    <div class="counter-card total">
+        <div class="counter-icon">👥</div>
+        <div class="counter-content">
+            <div class="counter-label">કુલ વિદ્યાર્થી</div>
+            <div class="counter-value">{{ students|length }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- ATTENDANCE LIST -->
+<div class="attendance-container">
+    {% if students %}
+        <div class="attendance-list">
+            {% for s in students %}
+            <div class="attendance-row" data-id="{{ s.id }}" data-status="{{ att_map.get(s.id,'P') }}">
+                <!-- STUDENT INFO -->
+                <div class="attendance-info">
+                    <div class="student-roll">{{ s.roll_no }}</div>
+                    <div class="student-details">
+                        <div class="student-name">{{ s.name }}</div>
+                        <div class="attendance-history">
+                            {% if s.att_pct < 75 %}
+                                <span class="attendance-percent low">{{ s.att_pct }}% ⚠️</span>
+                            {% else %}
+                                <span class="attendance-percent good">{{ s.att_pct }}%</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ATTENDANCE BUTTONS -->
+                <div class="attendance-actions att-btns" data-id="{{ s.id }}">
+                    <button class="attendance-btn present-btn {% if att_map.get(s.id,'P')=='P' %}active{% endif %}" 
+                            onclick="markAtt(this,'{{ s.id }}','P')"
+                            title="હાજર તરીકે માર્ક કરો">
+                        <span class="btn-icon">✓</span>
+                        <span class="btn-label">હા</span>
+                    </button>
+                    <button class="attendance-btn absent-btn {% if att_map.get(s.id)=='A' %}active{% endif %}" 
+                            onclick="markAtt(this,'{{ s.id }}','A')"
+                            title="ગેરહાજર તરીકે માર્ક કરો">
+                        <span class="btn-icon">✗</span>
+                        <span class="btn-label">ના</span>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-title">આ ધોરણમાં કોઈ વિદ્યાર્થી નથી</div>
+            <div class="empty-state-description">હાજરી માર્ક કરવા માટે વિદ્યાર્થીઓ ઉમેરો</div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- SAVE BAR -->
+<div class="save-bar">
+    <div class="save-info">
+        <span class="save-label">{{ class_filter }}</span>
+        <span class="save-separator">—</span>
+        <span class="save-count">{{ students|length }}</span>
+        <span class="save-label">વિ.</span>
+    </div>
+    <button class="btn btn-success" onclick="saveAttendance()">
+    <i class="ti ti-device-floppy"></i> હાજરી સાચવો
+</button>
+</div>
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* CLASS FILTER SECTION */
+    .class-filter-section {
+        margin-bottom: 24px;
+    }
+
+    .filter-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        display: block;
+        margin-bottom: 10px;
+    }
+
+    .class-filters {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .class-filter-btn {
+        display: inline-block;
+        padding: 10px 16px;
+        background: white;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--muted);
+        text-decoration: none;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .class-filter-btn:hover {
+        border-color: var(--primary-lighter);
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .class-filter-btn.active {
+        background: var(--primary);
+        border-color: var(--primary);
+        color: white;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* ATTENDANCE COUNTERS */
+    .attendance-counters {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        margin-bottom: 28px;
+    }
+
+    .counter-card {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        padding: 16px;
+        background: white;
+        border: 1.5px solid var(--border);
+        border-radius: 12px;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .counter-card:hover {
+        border-color: var(--border-light);
+        box-shadow: var(--shadow-md);
+        transform: translateY(-2px);
+    }
+
+    .counter-card.present {
+        border-left: 4px solid var(--green);
+        background: linear-gradient(to right, var(--green-light), white);
+    }
+
+    .counter-card.absent {
+        border-left: 4px solid var(--red);
+        background: linear-gradient(to right, var(--red-light), white);
+    }
+
+    .counter-card.total {
+        border-left: 4px solid var(--primary);
+        background: linear-gradient(to right, var(--primary-light), white);
+    }
+
+    .counter-icon {
+        font-size: 28px;
+        width: 50px;
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 10px;
+        flex-shrink: 0;
+    }
+
+    .counter-card.present .counter-icon {
+        background: var(--green-light);
+        color: var(--green);
+    }
+
+    .counter-card.absent .counter-icon {
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    .counter-card.total .counter-icon {
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .counter-content {
+        flex: 1;
+    }
+
+    .counter-label {
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        margin-bottom: 4px;
+    }
+
+    .counter-value {
+        font-size: 28px;
+        font-weight: 800;
+        color: var(--text);
+        letter-spacing: -1px;
+    }
+
+    /* ATTENDANCE CONTAINER */
+    .attendance-container {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 100px;
+    }
+
+    /* ATTENDANCE LIST */
+    .attendance-list {
+        display: flex;
+        flex-direction: column;
+        divider: 1px solid var(--border);
+    }
+
+    /* ATTENDANCE ROW */
+    .attendance-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        border-bottom: 1px solid var(--border-light);
+        transition: var(--transition);
+        gap: 16px;
+    }
+
+    .attendance-row:last-child {
+        border-bottom: none;
+    }
+
+    .attendance-row:hover {
+        background-color: var(--border-light);
+    }
+
+    .attendance-row.marked-present {
+        background: rgba(22, 163, 74, 0.02);
+        border-left: 4px solid var(--green);
+    }
+
+    .attendance-row.marked-absent {
+        background: rgba(220, 38, 38, 0.02);
+        border-left: 4px solid var(--red);
+    }
+
+    /* STUDENT INFO */
+    .attendance-info {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex: 1;
+        min-width: 0;
+    }
+
+    .student-roll {
+        width: 44px;
+        height: 44px;
+        border-radius: 10px;
+        background: var(--primary-light);
+        color: var(--primary);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        flex-shrink: 0;
+    }
+
+    .student-details {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .student-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 4px;
+        word-break: break-word;
+    }
+
+    .attendance-history {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .attendance-percent {
+        display: inline-block;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 4px 10px;
+        border-radius: 6px;
+    }
+
+    .attendance-percent.good {
+        background: var(--green-light);
+        color: var(--green);
+    }
+
+    .attendance-percent.low {
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    /* ATTENDANCE ACTIONS */
+    .attendance-actions {
+        display: flex;
+        gap: 10px;
+        flex-shrink: 0;
+    }
+
+    .attendance-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        width: 70px;
+        height: 44px;
+        border: 1.5px solid var(--border);
+        background: white;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: var(--transition);
+        outline: none;
+    }
+
+    .attendance-btn:hover {
+        border-color: var(--border);
+        background: var(--border-light);
+    }
+
+    .btn-icon {
+        font-size: 16px;
+    }
+
+    .btn-label {
+        display: none;
+    }
+
+    /* PRESENT BUTTON */
+    .present-btn.active {
+        background: var(--green-light);
+        border-color: var(--green);
+        color: var(--green);
+        box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+    }
+
+    .present-btn.active:hover {
+        border-color: var(--green);
+        background: var(--green-light);
+    }
+
+    /* ABSENT BUTTON */
+    .absent-btn.active {
+        background: var(--red-light);
+        border-color: var(--red);
+        color: var(--red);
+        box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+    }
+
+    .absent-btn.active:hover {
+        border-color: var(--red);
+        background: var(--red-light);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        color: var(--muted);
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        font-size: 72px;
+        margin-bottom: 16px;
+        opacity: 0.4;
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .empty-state-description {
+        font-size: 14px;
+        color: var(--muted);
+    }
+
+    /* SAVE BAR */
+    .save-bar {
+        position: fixed;
+        bottom: 56px;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid var(--border);
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        z-index: 50;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+        flex-wrap: wrap;
+    }
+
+    .save-info {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .save-label {
+        color: var(--muted);
+    }
+
+    .save-separator {
+        color: var(--border);
+    }
+
+    .save-count {
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 16px;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 1024px) {
+        .attendance-counters {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .class-filters {
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .class-filter-btn {
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .attendance-counters {
+            grid-template-columns: 1fr;
+        }
+
+        .attendance-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding: 14px;
+        }
+
+        .attendance-info {
+            width: 100%;
+        }
+
+        .attendance-actions {
+            width: 100%;
+            justify-content: space-between;
+        }
+
+        .attendance-btn {
+            flex: 1;
+            width: auto;
+        }
+
+        .btn-label {
+            display: inline;
+        }
+
+        .counter-card {
+            padding: 14px;
+            gap: 12px;
+        }
+
+        .counter-icon {
+            width: 44px;
+            height: 44px;
+            font-size: 24px;
+        }
+
+        .counter-value {
+            font-size: 24px;
+        }
+
+        .student-roll {
+            width: 40px;
+            height: 40px;
+            font-size: 12px;
+        }
+
+        .save-bar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 12px;
+            padding: 12px 16px;
+        }
+
+        .save-info {
+            justify-content: center;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .class-filters {
+            gap: 6px;
+        }
+
+        .class-filter-btn {
+            padding: 8px 10px;
+            font-size: 11px;
+        }
+
+        .attendance-counters {
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .counter-card {
+            padding: 12px;
+            gap: 10px;
+        }
+
+        .counter-icon {
+            width: 40px;
+            height: 40px;
+            font-size: 20px;
+        }
+
+        .counter-label {
+            font-size: 11px;
+        }
+
+        .counter-value {
+            font-size: 20px;
+        }
+
+        .attendance-row {
+            padding: 12px;
+        }
+
+        .student-name {
+            font-size: 13px;
+        }
+
+        .attendance-percent {
+            font-size: 11px;
+            padding: 3px 8px;
+        }
+
+        .attendance-btn {
+            width: 50px;
+            height: 40px;
+            font-size: 12px;
+        }
+
+        .student-roll {
+            width: 38px;
+            height: 38px;
+            font-size: 11px;
+        }
+
+        .empty-state {
+            padding: 60px 16px;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+        }
+
+        .empty-state-title {
+            font-size: 16px;
+        }
+
+        .save-info {
+            font-size: 11px;
+        }
+
+        .save-count {
+            font-size: 14px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let attData = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.att-btns').forEach(function(row) {
+        let id = row.dataset.id;
+        let activeBtn = row.querySelector('.active');
+        attData[id] = (activeBtn && activeBtn.classList.contains('absent-btn')) ? 'A' : 'P';
+        updateRowClass(row);
+    });
+    updateCounters();
+});
+
+function markAtt(btn, id, status) {
+    let btnGroup = btn.closest('.att-btns');
+    
+    // Remove active from all buttons in this group
+    btnGroup.querySelectorAll('.attendance-btn').forEach(function(b) {
+        b.classList.remove('active');
+    });
+    
+    // Add active to clicked button
+    btn.classList.add('active');
+    
+    // Update data and counters
+    attData[id] = status;
+    updateCounters();
+    
+    // Update row class
+    updateRowClass(btnGroup);
+}
+
+function updateRowClass(btnGroup) {
+    let row = btnGroup.closest('.attendance-row');
+    row.classList.remove('marked-present', 'marked-absent');
+    
+    let presentBtn = btnGroup.querySelector('.present-btn');
+    if (presentBtn.classList.contains('active')) {
+        row.classList.add('marked-present');
+    } else if (btnGroup.querySelector('.absent-btn').classList.contains('active')) {
+        row.classList.add('marked-absent');
+    }
+}
+
+function updateCounters() {
+    let present = 0, absent = 0;
+    for (let id in attData) {
+        if (attData[id] === 'P') {
+            present++;
+        } else {
+            absent++;
+        }
+    }
+    document.getElementById('pCount').textContent = present;
+    document.getElementById('aCount').textContent = absent;
+}
+
+function saveAttendance() {
+    fetch('/principal/attendance/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({attendance: attData})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        showToast(d.success ? '✅ હાજરી સાચવાઈ!' : '❌ ભૂલ થઈ.');
+    })
+    .catch(function() {
+        showToast('❌ Network error.');
+    });
+}
+</script>
+{% endblock %}

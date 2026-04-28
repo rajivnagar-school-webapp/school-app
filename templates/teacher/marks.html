@@ -1,0 +1,832 @@
+{% extends 'base.html' %}
+{% block title %}ગુણ એન્ટ્રી - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">📝 ગુણ એન્ટ્રી — {{ session.class }}</h2>
+        <p class="page-subtitle">વિષયમાં ગુણ દાખલ કરો અને સાચવો</p>
+    </div>
+</div>
+
+<!-- NO SUBJECTS MESSAGE -->
+{% if not subjects %}
+<div class="card">
+    <div class="empty-state">
+        <div class="empty-state-icon">📚</div>
+        <div class="empty-state-title">કોઈ વિષય નથી</div>
+        <div class="empty-state-description">પહેલા વિષયો ઉમેરો</div>
+        <a href="/teacher/subjects" class="btn btn-primary" style="margin-top: 16px;">
+            વિષય પૃષ્ઠ પર જાઓ →
+        </a>
+    </div>
+</div>
+
+<!-- MARKS ENTRY FORM -->
+{% else %}
+
+<!-- SEMESTER SELECTOR -->
+<div class="marks-filters">
+    <div class="filter-group">
+        <label class="filter-label">સત્ર</label>
+        <div class="button-group">
+            <a href="?subject_id={{ subject_id }}&semester=1" 
+               class="sem-btn {% if semester=='1' %}active{% endif %}">
+                સત્ર ૧
+            </a>
+            <a href="?subject_id={{ subject_id }}&semester=2" 
+               class="sem-btn {% if semester=='2' %}active{% endif %}">
+                સત્ર ૨
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- SUBJECT SELECTOR -->
+<div class="subject-tabs-container">
+    <label class="filter-label">વિષય</label>
+    <div class="subject-tabs">
+        {% for s in subjects %}
+        <a href="?subject_id={{ s.id }}&semester={{ semester }}" 
+           class="sub-tab {% if s.id==subject_id %}active{% endif %}"
+           title="{{ s.subject_name }}">
+            {{ s.subject_name }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- CURRENT SUBJECT INFO -->
+{% if current_subject %}
+{% set max_w = (current_subject.get('max_written') or 40)|int %}
+{% set max_p = (current_subject.get('max_participation') or 20)|int %}
+{% set max_t = max_w + max_p %}
+
+<!-- SUBJECT HEADER -->
+<div class="marks-header">
+    <div class="marks-header-info">
+        <h3 class="marks-subject-name">{{ current_subject.subject_name }}</h3>
+        <div class="marks-subject-meta">
+            <span class="meta-badge">
+                <span class="meta-icon">📋</span>
+                સત્ર {{ semester }}
+            </span>
+        </div>
+    </div>
+    <div class="marks-header-scales">
+        <div class="scale-item">
+            <span class="scale-label">લેખિત</span>
+            <span class="scale-value">/{{ max_w }}</span>
+        </div>
+        <div class="scale-divider">+</div>
+        <div class="scale-item">
+            <span class="scale-label">સહભાગી</span>
+            <span class="scale-value">/{{ max_p }}</span>
+        </div>
+        <div class="scale-divider">=</div>
+        <div class="scale-item scale-total">
+            <span class="scale-label">કુલ</span>
+            <span class="scale-value">/{{ max_t }}</span>
+        </div>
+    </div>
+</div>
+
+<!-- MAX MARKS CONFIGURATION -->
+<div class="marks-config">
+    <div class="config-group">
+        <label for="max_written" class="config-label">
+            <span class="config-icon">📝</span>
+            કુલ લેખિત
+        </label>
+        <input type="number" id="max_written" value="{{ max_w }}" class="config-input" min="0" max="100">
+    </div>
+    <div class="config-group">
+        <label for="max_participation" class="config-label">
+            <span class="config-icon">💬</span>
+            કુલ સહભાગી
+        </label>
+        <input type="number" id="max_participation" value="{{ max_p }}" class="config-input" min="0" max="100">
+    </div>
+</div>
+
+<!-- MARKS TABLE -->
+<div class="table-container">
+    <table class="marks-table">
+        <thead>
+            <tr>
+                <th class="col-roll">ક્રમ</th>
+                <th class="col-name">વિદ્યાર્થીનું નામ</th>
+                <th class="col-written">
+                    <span class="col-title">લેખિત</span>
+                    <span class="col-max">{{ max_w }}</span>
+                </th>
+                <th class="col-participation">
+                    <span class="col-title">સહભ.</span>
+                    <span class="col-max">{{ max_p }}</span>
+                </th>
+                <th class="col-total">કુલ</th>
+                <th class="col-grade">ગ્રેડ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if students %}
+                {% for s in students %}
+                <tr class="marks-row" data-id="{{ s.id }}" data-maxw="{{ max_w }}" data-maxp="{{ max_p }}">
+                    <td class="col-roll">
+                        <span class="cell-value">{{ s.roll_no }}</span>
+                    </td>
+                    <td class="col-name">
+                        <span class="cell-value">{{ s.name }}</span>
+                    </td>
+                    <td class="col-written">
+                        <input type="number" 
+                               class="marks-input written-inp" 
+                               min="0" 
+                               max="{{ max_w }}" 
+                               placeholder="0"
+                               value="{{ marks_map[s.id].written_marks if s.id in marks_map else '' }}" 
+                               oninput="calcTotal(this)" 
+                               title="لیکھت گن دریج کریں" />
+                    </td>
+                    <td class="col-participation">
+                        <input type="number" 
+                               class="marks-input part-inp" 
+                               min="0" 
+                               max="{{ max_p }}" 
+                               placeholder="0"
+                               value="{{ marks_map[s.id].participation_marks if s.id in marks_map else '' }}" 
+                               oninput="calcTotal(this)" 
+                               title="سہ بھاگیتا گن دریج کریں" />
+                    </td>
+                    <td class="col-total">
+                        <span class="total-cell">
+                            {% if s.id in marks_map %}
+                                {{ marks_map[s.id].written_marks + marks_map[s.id].participation_marks }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td class="col-grade">
+                        <span class="grade-badge grade-cell
+                        {% if s.id in marks_map %}
+                            {% set t=marks_map[s.id].written_marks+marks_map[s.id].participation_marks %}
+                            {% set p=(t/max_t*100)|int %}
+                            {% if p>=90 %}grade-a-plus{% elif p>=75 %}grade-a{% elif p>=60 %}grade-b{% elif p>=45 %}grade-c{% else %}grade-d{% endif %}
+                        {% else %}grade-empty{% endif %}">
+                        {% if s.id in marks_map %}
+                            {% set t=marks_map[s.id].written_marks+marks_map[s.id].participation_marks %}
+                            {% set p=(t/max_t*100)|int %}
+                            {% if p>=90 %}A+{% elif p>=75 %}A{% elif p>=60 %}B{% elif p>=45 %}C{% else %}D{% endif %}
+                        {% else %}—{% endif %}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">👥</div>
+                            <div class="empty-state-title">કોઈ વિદ્યાર્થી નથી</div>
+                        </div>
+                    </td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+</div>
+
+<!-- SAVE BAR -->
+<div class="save-bar">
+    <div class="save-bar-info">
+        <span class="save-bar-subject">📚 {{ current_subject.subject_name }}</span>
+        <span class="save-bar-semester">સત્ર {{ semester }}</span>
+    </div>
+    <button class="btn btn-success" onclick="saveMarks()">
+    <i class="ti ti-device-floppy"></i> ગુણ સાચવો
+</button>
+</div>
+
+{% endif %}
+{% endif %}
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* MARKS FILTERS */
+    .marks-filters {
+        margin-bottom: 24px;
+        padding: 16px;
+        background: var(--border-light);
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+    }
+
+    .filter-group {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .filter-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+
+    .button-group {
+        display: flex;
+        gap: 8px;
+    }
+
+    /* SUBJECT TABS CONTAINER */
+    .subject-tabs-container {
+        margin-bottom: 24px;
+    }
+
+    .subject-tabs {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+    }
+
+    /* MARKS HEADER */
+    .marks-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 20px;
+        background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary) 100%);
+        border-radius: 12px;
+        margin-bottom: 24px;
+        flex-wrap: wrap;
+        gap: 20px;
+    }
+
+    .marks-header-info {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .marks-subject-name {
+        font-size: 18px;
+        font-weight: 700;
+        color: white;
+        margin: 0;
+    }
+
+    .marks-subject-meta {
+        display: flex;
+        gap: 8px;
+    }
+
+    .meta-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        color: white;
+    }
+
+    .meta-icon {
+        font-size: 13px;
+    }
+
+    .marks-header-scales {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 8px;
+    }
+
+    .scale-item {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .scale-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: rgba(255, 255, 255, 0.8);
+        text-transform: uppercase;
+        letter-spacing: 0.2px;
+    }
+
+    .scale-value {
+        font-size: 14px;
+        font-weight: 700;
+        color: white;
+    }
+
+    .scale-divider {
+        color: rgba(255, 255, 255, 0.6);
+        font-weight: 300;
+        margin: 0 6px;
+    }
+
+    .scale-total {
+        border-left: 1px solid rgba(255, 255, 255, 0.3);
+        padding-left: 12px;
+        margin-left: 6px;
+    }
+
+    /* MARKS CONFIG */
+    .marks-config {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+        background: var(--border-light);
+        padding: 16px;
+        border-radius: 10px;
+    }
+
+    .config-group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .config-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .config-icon {
+        font-size: 14px;
+    }
+
+    .config-input {
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+        outline: none;
+        background: white;
+        transition: var(--transition);
+    }
+
+    .config-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 79, 138, 0.1);
+    }
+
+    /* TABLE CONTAINER */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+        margin-bottom: 80px;
+    }
+
+    /* MARKS TABLE */
+    .marks-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .marks-table thead {
+        background: linear-gradient(to right, var(--border-light), var(--border));
+    }
+
+    .marks-table th {
+        padding: 16px 12px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .col-title {
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .col-max {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        font-weight: 600;
+    }
+
+    /* TABLE ROWS */
+    .marks-row {
+        border-bottom: 1px solid var(--border-light);
+        transition: background-color 0.15s ease;
+    }
+
+    .marks-row:hover {
+        background-color: var(--border-light);
+    }
+
+    .marks-row td {
+        padding: 14px 12px;
+        vertical-align: middle;
+    }
+
+    .col-roll {
+        width: 50px;
+    }
+
+    .col-name {
+        font-weight: 600;
+        min-width: 150px;
+    }
+
+    .col-written,
+    .col-participation {
+        width: 100px;
+        text-align: center;
+    }
+
+    .col-total {
+        width: 70px;
+        text-align: center;
+        font-weight: 700;
+    }
+
+    .col-grade {
+        width: 80px;
+        text-align: center;
+    }
+
+    /* CELL VALUES */
+    .cell-value {
+        display: block;
+        font-weight: 500;
+    }
+
+    /* MARKS INPUT */
+    .marks-input {
+        width: 100%;
+        padding: 10px 8px;
+        border: 1.5px solid var(--border);
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+        outline: none;
+        background: white;
+        transition: var(--transition);
+    }
+
+    .marks-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 79, 138, 0.1);
+        background: white;
+    }
+
+    .marks-input::placeholder {
+        color: var(--muted);
+        opacity: 0.5;
+    }
+
+    /* TOTAL CELL */
+    .total-cell {
+        display: inline-block;
+        padding: 6px 12px;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 14px;
+    }
+
+    /* GRADE BADGES */
+    .grade-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-weight: 700;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .grade-a-plus {
+        background: #dbeafe;
+        color: #0284c7;
+    }
+
+    .grade-a {
+        background: var(--green-light);
+        color: var(--green);
+    }
+
+    .grade-b {
+        background: var(--yellow-light);
+        color: var(--yellow);
+    }
+
+    .grade-c {
+        background: #fed7aa;
+        color: #ea580c;
+    }
+
+    .grade-d {
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    .grade-empty {
+        background: var(--border-light);
+        color: var(--muted);
+    }
+
+    /* SAVE BAR */
+    .save-bar {
+        position: fixed;
+        bottom: 56px;
+        left: 0;
+        right: 0;
+        background: white;
+        border-top: 1px solid var(--border);
+        padding: 14px 24px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        z-index: 50;
+        box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.08);
+        flex-wrap: wrap;
+    }
+
+    .save-bar-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .save-bar-subject {
+        color: var(--primary);
+    }
+
+    .save-bar-semester {
+        color: var(--muted);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        color: var(--muted);
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+
+    .empty-state-description {
+        font-size: 14px;
+        color: var(--muted);
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        .marks-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .marks-config {
+            grid-template-columns: 1fr;
+        }
+
+        .marks-filters {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .filter-group {
+            width: 100%;
+        }
+
+        .col-written,
+        .col-participation,
+        .col-total,
+        .col-grade {
+            width: auto;
+        }
+
+        .marks-table th,
+        .marks-table td {
+            padding: 12px 8px;
+            font-size: 12px;
+        }
+
+        .marks-input {
+            padding: 8px 4px;
+            font-size: 13px;
+        }
+
+        .col-name {
+            min-width: 100px;
+        }
+
+        .save-bar {
+            padding: 12px 16px;
+            gap: 12px;
+        }
+
+        .save-bar-info {
+            width: 100%;
+            flex-direction: column;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .marks-table {
+            font-size: 11px;
+        }
+
+        .marks-table th,
+        .marks-table td {
+            padding: 10px 6px;
+        }
+
+        .col-name {
+            min-width: 80px;
+        }
+
+        .marks-input {
+            padding: 6px 4px;
+            font-size: 12px;
+        }
+
+        .grade-badge {
+            padding: 4px 8px;
+            font-size: 10px;
+        }
+
+        .total-cell {
+            padding: 4px 8px;
+            font-size: 12px;
+        }
+
+        .marks-header-scales {
+            gap: 6px;
+            padding: 8px;
+        }
+
+        .scale-value {
+            font-size: 12px;
+        }
+
+        .scale-divider {
+            margin: 0 4px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const SID='{{ subject_id }}', SEM='{{ semester }}';
+
+function calcTotal(inp) {
+    let row = inp.closest('tr');
+    let maxW = parseInt(row.dataset.maxw) || 40;
+    let maxP = parseInt(row.dataset.maxp) || 20;
+    let maxT = maxW + maxP;
+    
+    let writtenInp = row.querySelector('.written-inp');
+    let partInp = row.querySelector('.part-inp');
+    
+    let w = parseInt(writtenInp.value) || 0;
+    let p = parseInt(partInp.value) || 0;
+    
+    // Enforce max values
+    if (w > maxW) {
+        writtenInp.value = maxW;
+        w = maxW;
+    }
+    if (p > maxP) {
+        partInp.value = maxP;
+        p = maxP;
+    }
+    
+    let t = w + p;
+    let totalCell = row.querySelector('.total-cell');
+    totalCell.textContent = t > 0 ? t : '—';
+    
+    // Calculate grade
+    let pct = (t / maxT) * 100;
+    let grade = 'D';
+    let gradeClass = 'grade-d';
+    
+    if (pct >= 90) {
+        grade = 'A+';
+        gradeClass = 'grade-a-plus';
+    } else if (pct >= 75) {
+        grade = 'A';
+        gradeClass = 'grade-a';
+    } else if (pct >= 60) {
+        grade = 'B';
+        gradeClass = 'grade-b';
+    } else if (pct >= 45) {
+        grade = 'C';
+        gradeClass = 'grade-c';
+    }
+    
+    let gradeCell = row.querySelector('.grade-cell');
+    gradeCell.textContent = t > 0 ? grade : '—';
+    gradeCell.className = 'grade-badge ' + gradeClass;
+}
+
+function saveMarks() {
+    let data = {};
+    document.querySelectorAll('tbody tr[data-id]').forEach(function(row) {
+        let id = row.dataset.id;
+        let w = parseInt(row.querySelector('.written-inp').value) || 0;
+        let p = parseInt(row.querySelector('.part-inp').value) || 0;
+        if (w > 0 || p > 0) {
+            data[id] = {written: w, participation: p};
+        }
+    });
+    
+    if (!Object.keys(data).length) {
+        showToast('⚠️ કોઈ ગુણ ભર્યા નથી!');
+        return;
+    }
+    
+    fetch('/teacher/marks/save', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            subject_id: SID,
+            semester: SEM,
+            max_written: document.getElementById('max_written')?.value,
+            max_participation: document.getElementById('max_participation')?.value,
+            marks: data
+        })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+        showToast(d.success ? '✅ ગુણ સાચવાયા!' : '❌ ભૂલ થઈ.');
+    })
+    .catch(function() {
+        showToast('❌ Network error.');
+    });
+}
+</script>
+{% endblock %}

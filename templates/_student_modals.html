@@ -1,0 +1,135 @@
+{% macro student_modals(add_action, edit_action, show_class_field=false) %}
+<!-- ADD MODAL -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header"><h3>નવો વિદ્યાર્થી ઉમેરો</h3><button class="close-btn" onclick="closeModal('addModal')">✕</button></div>
+    <form method="POST" action="{{ add_action }}" enctype="multipart/form-data">
+      {% if show_class_field %}
+      <div class="form-group"><label>ધોરણ *</label>
+        <select name="class" required><option value="">-- ધોરણ પસંદ કરો --</option>
+        {% for i in range(1,9) %}<option value="Class {{ i }}">ધોરણ {{ i }}</option>{% endfor %}</select>
+      </div>
+      {% endif %}
+      <div class="section-label">મૂળભૂત માહિતી</div>
+      <div class="form-row">
+        <div class="form-group"><label>પૂરું નામ (વિ.નું નામ) *</label><input type="text" name="name" placeholder="દા.ત. પ્રિયાબેન" required /></div>
+        <div class="form-group"><label>અટક (Surname)</label><input type="text" name="surname" placeholder="દા.ત. ઠાકોર" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>પિતાનું નામ</label><input type="text" name="father_name" placeholder="દા.ત. રણજીતસિંહ" /></div>
+        <div class="form-group"><label>માતાનું નામ</label><input type="text" name="mother_name" placeholder="દા.ત. મંજુલાબેન" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ક્રમ નંબર *</label><input type="text" name="roll_no" placeholder="દા.ત. ૦૧" required /></div>
+        <div class="form-group"><label>જ.ર. નંબર</label><input type="text" name="gr_number" placeholder="દા.ત. ૧૩૨૧" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>જન્મ તારીખ</label><input type="date" name="dob" /></div>
+        <div class="form-group"><label>જાતિ</label>
+          <select name="gender"><option value="">પસંદ કરો</option><option value="Male (Kumar)">કુમાર</option><option value="Female (Kanya)">કન્યા</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>અ.જ.જા./જ્ઞાતિ</label><input type="text" name="caste" placeholder="દા.ત. OBC" /></div>
+        <div class="form-group"><label>વર્ગ (Section)</label><input type="text" name="section" placeholder="દા.ત. અ" /></div>
+      </div>
+      <div class="form-group"><label>સરનામું</label><input type="text" name="address" placeholder="ગામ, તાલુકો, જિલ્લો" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>વાલીનો સંપર્ક</label><input type="tel" name="parent_contact" placeholder="મોબાઇલ નંબર" /></div>
+        <div class="form-group"><label>આધાર નંબર</label><input type="text" name="aadhaar_number" placeholder="XXXX XXXX XXXX" /></div>
+      </div>
+      <div class="form-group"><label>હાજરી રજી. નં.</label><input type="text" name="attendance_register_no" placeholder="દા.ત. ૧૫" /></div>
+      <div class="section-label">બેંક વિગત</div>
+      <div class="form-row">
+        <div class="form-group"><label>ખાતા નંબર</label><input type="text" name="bank_account" placeholder="ખાતા નંબર" /></div>
+        <div class="form-group"><label>બેંકનું નામ</label><input type="text" name="bank_name" placeholder="દા.ત. SBI, કડી" /></div>
+      </div>
+      <div class="form-group"><label>IFSC Code</label><input type="text" name="ifsc_code" placeholder="દા.ત. SBIN0001234" /></div>
+      <div class="section-label">દસ્તાવેજો</div>
+      <div class="form-group"><label>📄 આધાર કાર્ડ (ફોટો)</label><input type="file" name="aadhaar_doc" accept="image/*,.pdf" /></div>
+      <div class="form-group"><label>📄 રેશન કાર્ડ (ફોટો)</label><input type="file" name="ration_doc" accept="image/*,.pdf" /></div>
+      <div class="form-group">
+        <label>📎 અન્ય દસ્તાવેજો</label>
+        <div id="customDocsList"></div>
+        <button type="button" class="add-doc-btn" onclick="addCustomDoc()">+ બીજો દસ્તાવેજ ઉમેરો</button>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">
+    <i class="ti ti-check"></i> સાચવો
+</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal('addModal')">રદ</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- VIEW MODAL -->
+<div class="modal-overlay" id="viewModal">
+  <div class="modal">
+    <div class="modal-header"><h3 id="viewStudentName">વિદ્યાર્થી વિગત</h3><button class="close-btn" onclick="closeModal('viewModal')">✕</button></div>
+    <div id="viewStudentContent"></div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-primary" id="viewEditBtn" onclick="openEditFromView()">
+    <i class="ti ti-edit"></i> ફેરફાર
+</button>
+      <button class="btn btn-outline" onclick="closeModal('viewModal')">બંધ</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT MODAL -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header"><h3>વિદ્યાર્થી ફેરફાર</h3><button class="close-btn" onclick="closeModal('editModal')">✕</button></div>
+    <form method="POST" action="{{ edit_action }}" enctype="multipart/form-data">
+      <input type="hidden" name="student_id" id="editStudentId" />
+      <div class="section-label">મૂળભૂત માહિતી</div>
+      <div class="form-row">
+        <div class="form-group"><label>પૂરું નામ *</label><input type="text" name="name" id="editName" required /></div>
+        <div class="form-group"><label>અટક</label><input type="text" name="surname" id="editSurname" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>પિતાનું નામ</label><input type="text" name="father_name" id="editFatherName" /></div>
+        <div class="form-group"><label>માતાનું નામ</label><input type="text" name="mother_name" id="editMotherName" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>ક્રમ નંબર *</label><input type="text" name="roll_no" id="editRoll" required /></div>
+        <div class="form-group"><label>જ.ર. નંબર</label><input type="text" name="gr_number" id="editGR" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>જન્મ તારીખ</label><input type="date" name="dob" id="editDOB" /></div>
+        <div class="form-group"><label>જાતિ</label>
+          <select name="gender" id="editGender"><option value="">પસંદ કરો</option><option value="Male (Kumar)">કુમાર</option><option value="Female (Kanya)">કન્યા</option></select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>જ્ઞાતિ</label><input type="text" name="caste" id="editCaste" /></div>
+        <div class="form-group"><label>વર્ગ</label><input type="text" name="section" id="editSection" /></div>
+      </div>
+      <div class="form-group"><label>સરનામું</label><input type="text" name="address" id="editAddress" /></div>
+      <div class="form-row">
+        <div class="form-group"><label>વાલી સંપર્ક</label><input type="tel" name="parent_contact" id="editContact" /></div>
+        <div class="form-group"><label>આધાર નંબર</label><input type="text" name="aadhaar_number" id="editAadhaar" /></div>
+      </div>
+      <div class="form-group"><label>હાજરી રજી. નં.</label><input type="text" name="attendance_register_no" id="editAttRegNo" /></div>
+      <div class="section-label">બેંક વિગત</div>
+      <div class="form-row">
+        <div class="form-group"><label>ખાતા નંબર</label><input type="text" name="bank_account" id="editBank" /></div>
+        <div class="form-group"><label>બેંકનું નામ</label><input type="text" name="bank_name" id="editBankName" /></div>
+      </div>
+      <div class="form-group"><label>IFSC Code</label><input type="text" name="ifsc_code" id="editIFSC" /></div>
+      <div class="section-label">નવો દસ્તાવેજ ઉમેરો</div>
+      <div class="form-row">
+        <div class="form-group"><label>દસ્તાવેજ નામ</label><input type="text" name="new_doc_name" placeholder="દા.ત. જન્મ પ્રમાણ" /></div>
+        <div class="form-group"><label>ફાઇલ</label><input type="file" name="new_doc_file" accept="image/*,.pdf" /></div>
+      </div>
+      <div class="modal-footer">
+        <button type="submit" class="btn btn-primary">
+    <i class="ti ti-check"></i> ફેરફાર સાચવો
+</button>
+        <button type="button" class="btn btn-outline" onclick="closeModal('editModal')">રદ</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endmacro %}

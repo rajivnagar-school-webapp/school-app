@@ -1,0 +1,405 @@
+{% extends 'base.html' %}
+{% block title %}શિક્ષક વ્યવસ્થાપન - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">👩‍🏫 શિક્ષક વ્યવસ્થાપન</h2>
+        <p class="page-subtitle">તમામ શિક્ષકોને વ્યવસ્થાપિત કરો</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addTeacherModal')" title="નવો શિક્ષક ઉમેરો">
+        <span>+</span> શિક્ષક ઉમેરો
+    </button>
+</div>
+
+<!-- TEACHERS TABLE -->
+<div class="table-container">
+    {% if teachers %}
+    <table class="teachers-table">
+        <thead>
+            <tr>
+                <th class="col-name">નામ</th>
+                <th class="col-username">Username</th>
+                <th class="col-class">ધોરણ</th>
+                <th class="col-actions">કામ</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for t in teachers %}
+            <tr class="teacher-row">
+                <td class="col-name">
+                    <span class="teacher-name">{{ t.name }}</span>
+                </td>
+                <td class="col-username">
+                    <span class="teacher-username">{{ t.username }}</span>
+                </td>
+                <td class="col-class">
+                    <span class="teacher-class">
+                        {{ t.class_assigned or 'ફાળવ્યું નથી' }}
+                    </span>
+                </td>
+                <td class="col-actions">
+                    <div class="action-buttons">
+                        <button class="btn-icon" onclick="openResetModal('{{ t.id }}','{{ t.name }}')">
+    <i class="ti ti-key"></i> Password
+</button>
+                        <form method="POST" 
+                              action="/principal/teachers/delete" 
+                              style="display:inline;"
+                              onsubmit="return confirm('શું તમે {{ t.name }}ને ભૂંસવા માગો છો?')">
+                            <input type="hidden" name="teacher_id" value="{{ t.id }}" />
+                            <button type="submit" class="btn-icon danger">
+    <i class="ti ti-trash"></i> ભૂંસો
+</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+        <div class="empty-state-icon">👥</div>
+        <div class="empty-state-title">કોઈ શિક્ષક નથી</div>
+        <div class="empty-state-description">પ્રથમ શિક્ષક ઉમેરો</div>
+        <button class="btn btn-primary" onclick="openModal('addTeacherModal')" style="margin-top: 16px;">
+            + શિક્ષક ઉમેરો
+        </button>
+    </div>
+    {% endif %}
+</div>
+
+<!-- ADD TEACHER MODAL -->
+<div class="modal-overlay" id="addTeacherModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>નવો શિક્ષક ઉમેરો</h3>
+            <button class="close-btn" onclick="closeModal('addTeacherModal')">✕</button>
+        </div>
+        <form method="POST" action="/principal/teachers/add">
+            <div class="form-group">
+                <label for="teacher-name">પૂરું નામ *</label>
+                <input type="text" 
+                       id="teacher-name"
+                       name="name" 
+                       placeholder="દા.ત. મીનાબેન પટેલ" 
+                       required 
+                       autofocus />
+            </div>
+
+            <div class="form-group">
+                <label for="teacher-username">Username *</label>
+                <input type="text" 
+                       id="teacher-username"
+                       name="username" 
+                       placeholder="દા.ત. teacher1" 
+                       required />
+            </div>
+
+            <div class="form-group">
+                <label for="teacher-password">પાસવર્ડ *</label>
+                <input type="password" 
+                       id="teacher-password"
+                       name="password" 
+                       placeholder="પાસવર્ડ દાખલ કરો"
+                       required />
+            </div>
+
+            <div class="form-group">
+                <label for="teacher-class">ધોરણ ફાળવો</label>
+                <select id="teacher-class" name="class_assigned">
+                    <option value="">-- ધોરણ પસંદ કરો --</option>
+                    {% for i in range(1,9) %}
+                    <option value="Class {{ i }}">ધોરણ {{ i }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">ઉમેરો</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('addTeacherModal')">રદ</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- RESET PASSWORD MODAL -->
+<div class="modal-overlay" id="resetModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Password બદલો — <span id="resetTeacherName"></span></h3>
+            <button class="close-btn" onclick="closeModal('resetModal')">✕</button>
+        </div>
+        <form method="POST" action="/principal/teachers/reset">
+            <input type="hidden" name="teacher_id" id="resetTeacherId" />
+            <div class="form-group">
+                <label for="new-password">નવો Password *</label>
+                <input type="password" 
+                       id="new-password"
+                       name="new_password" 
+                       placeholder="નવો પાસવર્ડ દાખલ કરો"
+                       required 
+                       autofocus />
+            </div>
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">સ્વીકારો</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('resetModal')">રદ</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* TABLE CONTAINER */
+    .table-container {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: var(--shadow-sm);
+    }
+
+    /* TEACHERS TABLE */
+    .teachers-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .teachers-table thead {
+        background: linear-gradient(to right, var(--border-light), var(--border));
+    }
+
+    .teachers-table th {
+        padding: 16px 14px;
+        text-align: left;
+        font-size: 12px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        border-bottom: 2px solid var(--border);
+    }
+
+    .col-name {
+        min-width: 150px;
+    }
+
+    .col-username {
+        width: 140px;
+    }
+
+    .col-class {
+        width: 120px;
+    }
+
+    .col-actions {
+        width: 150px;
+    }
+
+    /* TABLE ROWS */
+    .teacher-row {
+        border-bottom: 1px solid var(--border-light);
+        transition: background-color 0.15s ease;
+    }
+
+    .teacher-row:hover {
+        background-color: var(--border-light);
+    }
+
+    .teachers-table td {
+        padding: 14px;
+        vertical-align: middle;
+    }
+
+    .teacher-name {
+        display: block;
+        font-weight: 600;
+        color: var(--text);
+    }
+
+    .teacher-username {
+        display: block;
+        font-family: 'Courier New', monospace;
+        color: var(--muted);
+        font-size: 12px;
+    }
+
+    .teacher-class {
+        display: inline-block;
+        padding: 4px 12px;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+    }
+
+    /* ACTION BUTTONS */
+    .action-buttons {
+        display: flex;
+        gap: 8px;
+    }
+
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 7px 12px;
+        border: 1.5px solid var(--border);
+        background: white;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        color: var(--text);
+    }
+
+    .action-icon {
+        font-size: 13px;
+    }
+
+    .action-label {
+        display: none;
+    }
+
+    .action-edit:hover {
+        border-color: var(--primary);
+        background: var(--primary-light);
+        color: var(--primary);
+    }
+
+    .action-delete:hover {
+        border-color: var(--red);
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 80px 20px;
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        font-size: 72px;
+        margin-bottom: 16px;
+        opacity: 0.4;
+    }
+
+    .empty-state-title {
+        font-size: 18px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 8px;
+    }
+
+    .empty-state-description {
+        font-size: 14px;
+        color: var(--muted);
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        .col-actions {
+            width: auto;
+        }
+
+        .action-label {
+            display: inline;
+        }
+
+        .action-btn {
+            padding: 8px 10px;
+            font-size: 12px;
+        }
+
+        .teachers-table th,
+        .teachers-table td {
+            padding: 12px 10px;
+            font-size: 12px;
+        }
+
+        .col-name {
+            min-width: 120px;
+        }
+
+        .col-username {
+            width: auto;
+        }
+
+        .col-class {
+            width: auto;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .teachers-table {
+            font-size: 11px;
+        }
+
+        .teachers-table th,
+        .teachers-table td {
+            padding: 10px 8px;
+        }
+
+        .col-name {
+            min-width: 100px;
+        }
+
+        .teacher-username {
+            font-size: 11px;
+        }
+
+        .teacher-class {
+            font-size: 11px;
+            padding: 3px 10px;
+        }
+
+        .action-btn {
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+
+        .action-icon {
+            font-size: 12px;
+        }
+
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function openResetModal(id, name) {
+    document.getElementById('resetTeacherId').value = id;
+    document.getElementById('resetTeacherName').textContent = name;
+    openModal('resetModal');
+}
+</script>
+{% endblock %}

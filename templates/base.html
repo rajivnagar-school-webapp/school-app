@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="gu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}રાજીવનગર શાળા{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.11.0/dist/tabler-icons.min.css">
+    <style>
+        .brand {
+    display: flex;
+    align-items: center;
+}
+
+.brand img {
+    width: 30px;
+    height: 30px;
+    margin-right: 8px;
+}
+
+.title {
+    font-size: 15px;
+    line-height: 1.2;
+    font-weight: 600;
+}
+    </style>
+</head>
+<body>
+
+<div class="topbar">
+    <div class="topbar-left">
+        <button class="menu-btn" onclick="toggleSidebar()">
+            <i class="ti ti-menu-2"></i>
+        </button>
+        <div class="brand">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo">
+            <span class="title">રાજીવનગર પ્રાથમિક શાળા</span>
+        </div>
+    </div>
+    <div class="topbar-right">
+        {% if session.role == 'principal' %}
+            <span class="role-badge principal-badge">
+                 આચાર્ય
+            </span>
+        {% else %}
+            <span class="role-badge">
+                 {{ session.class }}
+            </span>
+        {% endif %}
+        <a href="/logout" class="logout-btn">
+            <i class="ti ti-logout"></i> લોગ આઉટ
+        </a>
+    </div>
+</div>
+
+<div class="app-layout">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-user">
+            <div class="user-avatar"></div>
+            <div>
+                <div class="user-name">{{ session.name }}</div>
+                <div class="user-role">
+                    {% if session.role == 'principal' %}
+                        <i class="ti ti-crown"></i> આચાર્ય
+                    {% else %}
+                        <i class="ti ti-chalkboard"></i> શિક્ષક
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar-section">મુખ્ય</div>
+
+        {% if session.role == 'teacher' %}
+            <a href="/teacher/dashboard" class="sidebar-link {% if request.endpoint=='teacher_dashboard' %}active{% endif %}">
+                <span class="ico ico-blue"><i class="ti ti-layout-dashboard"></i></span> ડેશબોર્ડ
+            </a>
+            <a href="/teacher/attendance" class="sidebar-link {% if request.endpoint=='teacher_attendance' %}active{% endif %}">
+                <span class="ico ico-green"><i class="ti ti-clipboard-check"></i></span> હાજરી
+            </a>
+            <a href="/teacher/students" class="sidebar-link {% if request.endpoint=='teacher_students' %}active{% endif %}">
+                <span class="ico ico-orange"><i class="ti ti-users"></i></span> વિદ્યાર્થીઓ
+            </a>
+            <a href="/teacher/subjects" class="sidebar-link {% if request.endpoint=='teacher_subjects' %}active{% endif %}">
+                <span class="ico ico-purple"><i class="ti ti-books"></i></span> વિષયો
+            </a>
+            <a href="/teacher/marks" class="sidebar-link {% if request.endpoint=='teacher_marks' %}active{% endif %}">
+                <span class="ico ico-teal"><i class="ti ti-pencil"></i></span> ગુણ એન્ટ્રી
+            </a>
+            <div class="sidebar-section">અહેવાલ</div>
+            <a href="/teacher/download" class="sidebar-link {% if request.endpoint=='teacher_download' %}active{% endif %}">
+                <span class="ico ico-navy"><i class="ti ti-download"></i></span> ડાઉનલોડ
+            </a>
+        {% else %}
+            <a href="/principal/dashboard" class="sidebar-link {% if request.endpoint=='principal_dashboard' %}active{% endif %}">
+                <span class="ico ico-blue"><i class="ti ti-layout-dashboard"></i></span> ડેશબોર્ડ
+            </a>
+            <a href="/principal/students" class="sidebar-link {% if request.endpoint=='principal_students' %}active{% endif %}">
+                <span class="ico ico-orange"><i class="ti ti-users"></i></span> તમામ વિ.
+            </a>
+            <a href="/principal/attendance" class="sidebar-link {% if request.endpoint=='principal_attendance' %}active{% endif %}">
+                <span class="ico ico-green"><i class="ti ti-clipboard-check"></i></span> હાજરી
+            </a>
+            <a href="/principal/marks" class="sidebar-link {% if request.endpoint=='principal_marks' %}active{% endif %}">
+                <span class="ico ico-teal"><i class="ti ti-pencil"></i></span> ગુણ જુઓ
+            </a>
+            <a href="/principal/download" class="sidebar-link {% if request.endpoint=='principal_download' %}active{% endif %}">
+                <span class="ico ico-navy"><i class="ti ti-download"></i></span> ડાઉનલોડ
+            </a>
+            <div class="sidebar-section">વ્યવસ્થાપન</div>
+            <a href="/principal/teachers" class="sidebar-link {% if request.endpoint=='principal_teachers' %}active{% endif %}">
+                <span class="ico ico-pink"><i class="ti ti-user-star"></i></span> શિ. વ્યવ.
+            </a>
+        {% endif %}
+
+        <div class="sidebar-section">ખાતું</div>
+        <div class="sidebar-link" onclick="openModal('passModal')">
+            <span class="ico ico-yellow"><i class="ti ti-lock"></i></span> પાસવર્ડ બદલો
+        </div>
+        <a href="/logout" class="sidebar-link">
+            <span class="ico ico-red"><i class="ti ti-door-exit"></i></span> લોગ આઉટ
+        </a>
+    </div>
+
+    <div class="main-content">{% block content %}{% endblock %}</div>
+</div>
+
+<!-- Mobile bottom nav -->
+<div class="bottom-nav">
+    {% if session.role == 'teacher' %}
+        <a href="/teacher/dashboard"  class="bnav-item {% if request.endpoint=='teacher_dashboard'  %}active{% endif %}">
+            <span class="ico ico-blue"><i class="ti ti-layout-dashboard"></i></span><small>ડેશ</small>
+        </a>
+        <a href="/teacher/attendance" class="bnav-item {% if request.endpoint=='teacher_attendance' %}active{% endif %}">
+            <span class="ico ico-green"><i class="ti ti-clipboard-check"></i></span><small>હાજ.</small>
+        </a>
+        <a href="/teacher/students"   class="bnav-item {% if request.endpoint=='teacher_students'   %}active{% endif %}">
+            <span class="ico ico-orange"><i class="ti ti-users"></i></span><small>વિ.</small>
+        </a>
+        <a href="/teacher/subjects"   class="bnav-item {% if request.endpoint=='teacher_subjects'   %}active{% endif %}">
+            <span class="ico ico-purple"><i class="ti ti-books"></i></span><small>વિષ.</small>
+        </a>
+        <a href="/teacher/marks"      class="bnav-item {% if request.endpoint=='teacher_marks'      %}active{% endif %}">
+            <span class="ico ico-teal"><i class="ti ti-pencil"></i></span><small>ગુણ</small>
+        </a>
+    {% else %}
+        <a href="/principal/dashboard"  class="bnav-item {% if request.endpoint=='principal_dashboard'  %}active{% endif %}">
+            <span class="ico ico-blue"><i class="ti ti-layout-dashboard"></i></span><small>ડેશ</small>
+        </a>
+        <a href="/principal/students"   class="bnav-item {% if request.endpoint=='principal_students'   %}active{% endif %}">
+            <span class="ico ico-orange"><i class="ti ti-users"></i></span><small>વિ.</small>
+        </a>
+        <a href="/principal/attendance" class="bnav-item {% if request.endpoint=='principal_attendance' %}active{% endif %}">
+            <span class="ico ico-green"><i class="ti ti-clipboard-check"></i></span><small>હાજ.</small>
+        </a>
+        <a href="/principal/teachers"   class="bnav-item {% if request.endpoint=='principal_teachers'   %}active{% endif %}">
+            <span class="ico ico-pink"><i class="ti ti-user-star"></i></span><small>શિ.</small>
+        </a>
+        <a href="/principal/download"   class="bnav-item {% if request.endpoint=='principal_download'   %}active{% endif %}">
+            <span class="ico ico-navy"><i class="ti ti-download"></i></span><small>ડાઉ.</small>
+        </a>
+    {% endif %}
+</div>
+
+<!-- Password Modal -->
+<div class="modal-overlay" id="passModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3><i class="ti ti-lock" style="color:#1a4f8a;"></i> પાસવર્ડ બદલો</h3>
+            <button class="close-btn" onclick="closeModal('passModal')">✕</button>
+        </div>
+        <div class="form-group"><label>જૂનો પાસવર્ડ</label><input type="password" id="oldPass" placeholder="જૂનો પાસવર્ડ" /></div>
+        <div class="form-group"><label>નવો પાસવર્ડ</label><input type="password" id="newPass" placeholder="નવો પાસવર્ડ" /></div>
+        <div class="modal-footer">
+            <button class="btn btn-primary" onclick="changePassword()">
+                <i class="ti ti-check"></i> સાચવો
+            </button>
+            <button class="btn btn-outline" onclick="closeModal('passModal')">રદ</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

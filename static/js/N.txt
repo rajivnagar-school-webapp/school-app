@@ -1,0 +1,140 @@
+/* ═══════════════════════════════════════
+   RAJIVNAGAR SCHOOL — MAIN JS
+   ═══════════════════════════════════════ */
+
+// ── Toast ──
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.style.display = 'flex';
+  t.style.opacity = '1';
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => {
+    t.style.opacity = '0';
+    setTimeout(() => { t.style.display = 'none'; }, 300);
+  }, duration);
+}
+
+// ── Modals ──
+function openModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+}
+function closeModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.querySelectorAll('.modal-overlay.active').forEach(m => {
+      m.classList.remove('active');
+    });
+    document.body.style.overflow = '';
+  }
+});
+
+// ── Sidebar Mobile ──
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (sb) sb.classList.toggle('open');
+  if (ov) ov.classList.toggle('active');
+  document.body.style.overflow = sb && sb.classList.contains('open') ? 'hidden' : '';
+}
+function closeSidebar() {
+  const sb = document.getElementById('sidebar');
+  const ov = document.getElementById('sidebarOverlay');
+  if (sb) sb.classList.remove('open');
+  if (ov) ov.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// ── Password Change ──
+function changePwd() {
+  const old = document.getElementById('oldPwd')?.value?.trim();
+  const nw  = document.getElementById('newPwd')?.value?.trim();
+  if (!old || !nw) { showToast('⚠️ બંને field ભરો'); return; }
+  if (nw.length < 4) { showToast('⚠️ Password ઓછામાં ઓછો 4 અક્ષર'); return; }
+  const fd = new FormData();
+  fd.append('old_password', old);
+  fd.append('new_password', nw);
+  fetch('/change-password', { method: 'POST', body: fd })
+    .then(r => r.json())
+    .then(d => {
+      showToast(d.success ? '✅ Password બદલાઈ ગયો!' : '❌ ' + d.msg);
+      if (d.success) {
+        closeModal('pwdModal');
+        document.getElementById('oldPwd').value = '';
+        document.getElementById('newPwd').value = '';
+      }
+    })
+    .catch(() => showToast('❌ Network Error'));
+}
+
+// ── Student Search ──
+function searchStudents(query) {
+  const q = query.toLowerCase().trim();
+  const cards = document.querySelectorAll('.student-card');
+  const noRes = document.getElementById('noResults');
+  let visible = 0;
+  cards.forEach(c => {
+    const name = (c.dataset.name || '').toLowerCase();
+    const roll = (c.dataset.roll || '').toLowerCase();
+    const show = !q || name.includes(q) || roll.includes(q);
+    c.style.display = show ? '' : 'none';
+    if (show) visible++;
+  });
+  if (noRes) noRes.style.display = (visible === 0 && q) ? 'block' : 'none';
+}
+
+// ── View Modal (Student Detail) ──
+function openViewModal(studentId, url) {
+  const modal = document.getElementById('viewModal');
+  if (!modal) return;
+  openModal('viewModal');
+  const body = modal.querySelector('.view-body') || modal.querySelector('.modal-body');
+  if (body) body.innerHTML = '<div class="empty-state"><span>⏳</span><p>Loading...</p></div>';
+  fetch(url)
+    .then(r => r.json())
+    .then(d => {
+      if (!d || d.error) { body.innerHTML = '<p class="empty-state">❌ Maahiti maḷī nahī.</p>'; return; }
+      body.innerHTML = `
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px">
+          <div class="sidebar-avatar" style="width:56px;height:56px;font-size:22px;flex-shrink:0">${(d.name||'?')[0]}</div>
+          <div>
+            <div style="font-size:18px;font-weight:700;color:var(--text)">${d.name||''} ${d.surname||''}</div>
+            <div style="font-size:13px;color:var(--text-muted);margin-top:2px">ક્રમ: ${d.roll_no||'-'} · GR: ${d.gr_number||'-'} · ${d.class||''}</div>
+          </div>
+        </div>
+        <div class="detail-grid">
+          <div class="detail-item"><label>પિતા</label><span>${d.father_name||'-'}</span></div>
+          <div class="detail-item"><label>માતા</label><span>${d.mother_name||'-'}</span></div>
+          <div class="detail-item"><label>જન્મ તારીખ</label><span>${d.dob||'-'}</span></div>
+          <div class="detail-item"><label>Gender</label><span>${d.gender||'-'}</span></div>
+          <div class="detail-item"><label>Caste</label><span>${d.caste||'-'}</span></div>
+          <div class="detail-item"><label>Section</label><span>${d.section||'-'}</span></div>
+          <div class="detail-item"><label>Contact</label><span>${d.parent_contact||'-'}</span></div>
+          <div class="detail-item"><label>Aadhaar</label><span>${d.aadhaar_number||'-'}</span></div>
+          <div class="detail-item" style="grid-column:1/-1"><label>સરનામું</label><span>${d.address||'-'}</span></div>
+          <div class="detail-item"><label>Bank Account</label><span>${d.bank_account||'-'}</span></div>
+          <div class="detail-item"><label>Bank Name</label><span>${d.bank_name||'-'}</span></div>
+          <div class="detail-item"><label>IFSC</label><span>${d.ifsc_code||'-'}</span></div>
+        </div>
+        ${d.documents && d.documents.length ? `
+          <div style="margin-top:16px;padding-top:14px;border-top:1.5px solid var(--border)">
+            <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">📎 Documents</div>
+            ${d.documents.map(doc => `<span class="badge badge-blue" style="margin:2px">📄 ${doc.doc_name}</span>`).join('')}
+          </div>` : ''}
+      `;
+    })
+    .catch(() => { if(body) body.innerHTML = '<p class="empty-state">❌ Error loading.</p>'; });
+}
+
+// ── Close modal on overlay click ──
+document.addEventListener('click', e => {
+  if (e.target.classList.contains('modal-overlay')) {
+    e.target.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+});

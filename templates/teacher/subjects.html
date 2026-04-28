@@ -1,0 +1,420 @@
+{% extends 'base.html' %}
+{% block title %}વિષયો - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">📚 વિષયો — {{ session.class }}</h2>
+        <p class="page-subtitle">તમારા ધોરણના તમામ વિષયો</p>
+    </div>
+    <button class="btn btn-primary" onclick="openModal('addSubjectModal')">
+    <i class="ti ti-plus"></i> વિષય ઉમેરો
+</button>
+</div>
+
+<!-- YOUR SUBJECTS SECTION -->
+<div class="card">
+    <div class="card-title">તમારા વિષયો</div>
+    
+    <div class="subjects-info">
+        <p>
+            <span class="info-icon">📋</span>
+            <span>અહીં વિષયો ઉમેરો. ગુણ એન્ટ્રી અને અહેવાલમાં આ જ વિષયો દેખાશે.</span>
+        </p>
+    </div>
+
+    {% if subjects %}
+        <div class="subject-list">
+            {% for s in subjects %}
+            <div class="subject-item">
+                <div class="subject-info">
+                    <div class="subject-name">📖 {{ s.subject_name }}</div>
+                    <div class="subject-semester-badge">સત્ર {{ s.semester }}</div>
+                    <div class="subject-scales">
+                        <span class="scale">લેખિત: {{ s.get('max_written', 40) }}</span>
+                        <span class="scale-divider">|</span>
+                        <span class="scale">સહભ.: {{ s.get('max_participation', 20) }}</span>
+                        <span class="scale-divider">|</span>
+                        <span class="scale">કુલ: {{ (s.get('max_written',40)|int or 40) + (s.get('max_participation',20)|int or 20) }}</span>
+                    </div>
+                </div>
+                <form method="POST" 
+                      action="/teacher/subjects/delete" 
+                      style="display:inline;"
+                      onsubmit="return confirm('શું તમે {{ s.subject_name }} દૂર કરવા માગો છો?')">
+                    <input type="hidden" name="subject_id" value="{{ s.id }}" />
+                    <button type="submit" class="btn-icon danger">
+    <i class="ti ti-trash"></i> દૂર કરો
+</button>
+                </form>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <div class="empty-state-icon">📭</div>
+            <div class="empty-state-title">કોઈ વિષય નથી</div>
+            <div class="empty-state-description">"+ વિષય ઉમેરો" બટન બનાવતાં વિષયો ઉમેરો અથવા નીચેના ઝડપી વિકલ્પોનો ઉપયોગ કરો</div>
+        </div>
+    {% endif %}
+</div>
+
+<!-- QUICK ADD SUBJECTS -->
+<div class="card">
+    <div class="card-title">💡 ઝડપી ઉમેરો — સામાન્ય વિષયો</div>
+    <p class="quick-add-info">ક્લિક કરીને સામાન્ય વિષયો તરત જ ઉમેરો</p>
+    
+    <div class="quick-subjects">
+        {% for name in ['ગુજરાતી','ગણિત','અંગ્રેજી','હિન્દી','સંસ્કૃત','વિજ્ઞાન અને ટેકનોલોજી','સામાજિક વિજ્ઞાન','કલા અને હસ્તશિલ્પ','કંપ્યુટર શિક્ષણ'] %}
+        <form method="POST" action="/teacher/subjects/add" style="display:inline;">
+            <input type="hidden" name="subject_name" value="{{ name }}" />
+            <input type="hidden" name="semester" value="1" />
+            <input type="hidden" name="max_written" value="40" />
+            <input type="hidden" name="max_participation" value="20" />
+            <button type="submit" class="quick-btn" title="{{ name }} ઉમેરો">
+                {{ name }}
+            </button>
+        </form>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- ADD SUBJECT MODAL -->
+<div class="modal-overlay" id="addSubjectModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>વિષય ઉમેરો</h3>
+            <button class="close-btn" onclick="closeModal('addSubjectModal')">✕</button>
+        </div>
+        <form method="POST" action="/teacher/subjects/add">
+            <div class="form-group">
+                <label for="subject-semester">સત્ર (Semester) *</label>
+                <select id="subject-semester" name="semester" required>
+                    <option value="1">સત્ર ૧ (પ્રથમ)</option>
+                    <option value="2">સત્ર ૨ (દ્વિતીય)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="subject-name">વિષય નામ *</label>
+                <input type="text" 
+                       id="subject-name"
+                       name="subject_name" 
+                       placeholder="દા.ત. ગણિત" 
+                       required 
+                       autofocus />
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="max-written">લેખિત ગુણ (મહત્તમ) *</label>
+                    <input type="number" 
+                           id="max-written"
+                           name="max_written" 
+                           value="40" 
+                           min="1" 
+                           max="200" 
+                           required />
+                    <small>ઉદા. ૪૦</small>
+                </div>
+                <div class="form-group">
+                    <label for="max-participation">સહભાગિતા ગુણ (મહત્તમ) *</label>
+                    <input type="number" 
+                           id="max-participation"
+                           name="max_participation" 
+                           value="20" 
+                           min="0" 
+                           max="100" 
+                           required />
+                    <small>ઉદા. ૨૦</small>
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <button type="submit" class="btn btn-primary">વિષય ઉમેરો</button>
+                <button type="button" class="btn btn-outline" onclick="closeModal('addSubjectModal')">રદ</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* SUBJECTS INFO */
+    .subjects-info {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 16px;
+        background: var(--primary-light);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 13px;
+        color: var(--primary);
+        font-weight: 500;
+    }
+
+    .info-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+    }
+
+    /* SUBJECT LIST */
+    .subject-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .subject-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 16px;
+        background: white;
+        border: 1.5px solid var(--border);
+        border-radius: 10px;
+        transition: var(--transition);
+        gap: 16px;
+    }
+
+    .subject-item:hover {
+        border-color: var(--primary-lighter);
+        box-shadow: var(--shadow-md);
+    }
+
+    .subject-info {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .subject-name {
+        font-size: 14px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+
+    .subject-semester-badge {
+        display: inline-block;
+        padding: 3px 10px;
+        background: var(--primary-light);
+        color: var(--primary);
+        border-radius: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-bottom: 8px;
+    }
+
+    .subject-scales {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        font-size: 12px;
+        color: var(--muted);
+    }
+
+    .scale {
+        font-weight: 600;
+    }
+
+    .scale-divider {
+        color: var(--border);
+    }
+
+    /* ACTION BUTTONS */
+    .action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 8px 14px;
+        border: 1.5px solid var(--border);
+        background: white;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        color: var(--text);
+        flex-shrink: 0;
+    }
+
+    .action-icon {
+        font-size: 13px;
+    }
+
+    .action-label {
+        display: none;
+    }
+
+    .action-delete:hover {
+        border-color: var(--red);
+        background: var(--red-light);
+        color: var(--red);
+    }
+
+    /* QUICK ADD SECTION */
+    .quick-add-info {
+        font-size: 13px;
+        color: var(--muted);
+        margin-bottom: 16px;
+        font-weight: 500;
+    }
+
+    .quick-subjects {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+    }
+
+    .quick-btn {
+        display: block;
+        width: 100%;
+        padding: 10px 12px;
+        background: white;
+        border: 1.5px solid var(--primary-lighter);
+        color: var(--primary);
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: var(--transition);
+        text-decoration: none;
+        text-align: center;
+    }
+
+    .quick-btn:hover {
+        background: var(--primary-light);
+        border-color: var(--primary);
+    }
+
+    /* EMPTY STATE */
+    .empty-state {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 60px 20px;
+        text-align: center;
+    }
+
+    .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 12px;
+        opacity: 0.4;
+    }
+
+    .empty-state-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: var(--text);
+        margin-bottom: 6px;
+    }
+
+    .empty-state-description {
+        font-size: 13px;
+        color: var(--muted);
+        max-width: 400px;
+    }
+
+    /* FORM GROUPS */
+    .form-group small {
+        display: block;
+        font-size: 11px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 768px) {
+        .subject-item {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .action-label {
+            display: inline;
+        }
+
+        .action-btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .quick-subjects {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-btn {
+            padding: 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .page-header {
+            flex-direction: column;
+            align-items: flex-start;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .subject-item {
+            padding: 12px;
+            gap: 12px;
+        }
+
+        .subject-name {
+            font-size: 13px;
+        }
+
+        .subject-scales {
+            gap: 6px;
+            font-size: 11px;
+        }
+
+        .subjects-info {
+            padding: 10px 12px;
+            font-size: 12px;
+        }
+
+        .quick-add-info {
+            font-size: 12px;
+        }
+
+        .quick-btn {
+            font-size: 11px;
+            padding: 10px;
+        }
+
+        .empty-state {
+            padding: 40px 16px;
+        }
+
+        .empty-state-icon {
+            font-size: 48px;
+        }
+
+        .empty-state-title {
+            font-size: 14px;
+        }
+
+        .empty-state-description {
+            font-size: 12px;
+        }
+    }
+</style>
+{% endblock %}

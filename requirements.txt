@@ -1,0 +1,8 @@
+flask
+supabase
+python-dotenv
+werkzeug
+openpyxl
+reportlab
+gunicorn
+weasyprint

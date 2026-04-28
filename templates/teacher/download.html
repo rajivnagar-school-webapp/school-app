@@ -1,0 +1,375 @@
+{% extends 'base.html' %}
+{% block title %}ડાઉનલોડ - રાજીવનગર શાળા{% endblock %}
+
+{% block content %}
+<!-- PAGE HEADER -->
+<div class="page-header">
+    <div>
+        <h2 class="page-title">📥 ડાઉનલોડ અને પ્રિન્ટ</h2>
+        <p class="page-subtitle">તમારા ધોરણનો ડેટા Excel અને PDF ફોર્મેટમાં ડાઉનલોડ કરો</p>
+    </div>
+</div>
+
+<!-- EXCEL DOWNLOADS SECTION -->
+<div class="card">
+    <div class="card-title">📊 Excel અહેવાલ</div>
+    
+    <!-- SEMESTER SELECTOR -->
+    <div class="semester-selector">
+        <label for="semSelect" class="filter-label">
+            <span class="filter-icon">📋</span>
+            <span>સત્ર પસંદ કરો</span>
+        </label>
+        <select id="semSelect" class="filter-select">
+            <option value="1">સત્ર ૧ (પ્રથમ)</option>
+            <option value="2">સત્ર ૨ (દ્વિતીય)</option>
+        </select>
+    </div>
+
+    <!-- DOWNLOAD BUTTONS -->
+    <div class="download-buttons">
+        <button class="btn btn-primary" onclick="downloadExcel()">
+    <i class="ti ti-table"></i> સામાન્ય Excel
+</button>
+<button class="btn btn-success" onclick="downloadGunSlip()">
+    <i class="ti ti-file-spreadsheet"></i> ગુણ પત્રક
+</button>
+<button class="btn btn-outline" onclick="downloadParinam()">
+    <i class="ti ti-file-description"></i> પરિણામ
+</button>
+    </div>
+
+    <!-- INFO BOXES -->
+    <div class="download-info">
+        <div class="info-item">
+            <span class="info-icon">📊</span>
+            <div class="info-content">
+                <strong>સામાન્ય Excel:</strong>
+                <p>વિદ્યાર્થી ડેટા અને હાજરીના તમામ ડેટા સાથે</p>
+            </div>
+        </div>
+        <div class="info-item">
+            <span class="info-icon">📋</span>
+            <div class="info-content">
+                <strong>ગુણ પત્રક:</strong>
+                <p>ડેટા + વિષય-વાર sheets + કુલ ગુણ + બોનસ ગુણ</p>
+            </div>
+        </div>
+        <div class="info-item">
+            <span class="info-icon">📄</span>
+            <div class="info-content">
+                <strong>પરિણામ પત્રક:</strong>
+                <p>ગુજરાતી માર્કશીટ (એક પૃષ્ઠ પર ૨ વિદ્યાર્થી)</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- STUDENT PDF SECTION -->
+<div class="card">
+    <div class="card-title">👤 વિદ્યાર્થી PDF</div>
+    
+    <div class="pdf-section">
+        <p class="pdf-description">
+            <span class="pdf-icon">📝</span>
+            <span>એક વિદ્યાર્થીનો સંપૂર્ણ PDF (૩ પૃષ્ઠ - હાજરી, ગુણ અને અહેવાલ)</span>
+        </p>
+
+        <div class="pdf-input-group">
+            <select id="studentSelect" class="pdf-select">
+                <option value="">-- વિદ્યાર્થી પસંદ કરો --</option>
+                {% for s in students %}
+                <option value="{{ s.id }}">
+                    {{ s.name }}{% if s.surname %} {{ s.surname }}{% endif %} (ક્રમ {{ s.roll_no }})
+                </option>
+                {% endfor %}
+            </select>
+            <button class="btn btn-primary" onclick="downloadPDF()">
+    <i class="ti ti-file-type-pdf"></i> PDF ડાઉનલોડ
+</button>
+        </div>
+
+        {% if not students %}
+        <div class="empty-message">
+            <span class="empty-icon">🚫</span>
+            <span>આ ધોરણમાં કોઈ વિદ્યાર્થી નથી</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    /* PAGE SUBTITLE */
+    .page-subtitle {
+        font-size: 14px;
+        color: var(--muted);
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    /* SEMESTER SELECTOR */
+    .semester-selector {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 24px;
+        padding: 16px;
+        background: var(--border-light);
+        border-radius: 10px;
+    }
+
+    .filter-label {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--text);
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+
+    .filter-icon {
+        font-size: 14px;
+    }
+
+    .filter-select {
+        padding: 10px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        outline: none;
+        background: white;
+        color: var(--text);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .filter-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 79, 138, 0.1);
+    }
+
+    /* DOWNLOAD BUTTONS */
+    .download-buttons {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-bottom: 24px;
+    }
+
+    .btn-icon {
+        display: inline-block;
+        font-size: 16px;
+    }
+
+    .btn-text {
+        display: inline;
+    }
+
+    /* DOWNLOAD INFO */
+    .download-info {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+        padding-top: 16px;
+        border-top: 1px solid var(--border);
+    }
+
+    .info-item {
+        display: flex;
+        gap: 12px;
+        padding: 12px;
+        background: var(--border-light);
+        border-radius: 8px;
+    }
+
+    .info-icon {
+        font-size: 24px;
+        flex-shrink: 0;
+    }
+
+    .info-content {
+        flex: 1;
+    }
+
+    .info-content strong {
+        display: block;
+        font-size: 13px;
+        color: var(--text);
+        margin-bottom: 4px;
+    }
+
+    .info-content p {
+        font-size: 12px;
+        color: var(--muted);
+        margin: 0;
+    }
+
+    /* PDF SECTION */
+    .pdf-section {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+
+    .pdf-description {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 16px;
+        background: var(--primary-light);
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--primary);
+    }
+
+    .pdf-icon {
+        font-size: 16px;
+    }
+
+    .pdf-input-group {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+
+    .pdf-select {
+        flex: 1;
+        min-width: 200px;
+        padding: 11px 14px;
+        border: 1.5px solid var(--border);
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 500;
+        outline: none;
+        background: white;
+        color: var(--text);
+        cursor: pointer;
+        transition: var(--transition);
+    }
+
+    .pdf-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(26, 79, 138, 0.1);
+    }
+
+    .empty-message {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        padding: 24px;
+        background: var(--border-light);
+        border-radius: 8px;
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 500;
+    }
+
+    .empty-icon {
+        font-size: 18px;
+    }
+
+    /* RESPONSIVE DESIGN */
+    @media (max-width: 1024px) {
+        .download-buttons {
+            flex-direction: column;
+        }
+
+        .btn {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .download-info {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .download-buttons {
+            flex-direction: column;
+        }
+
+        .pdf-input-group {
+            flex-direction: column;
+        }
+
+        .pdf-select {
+            min-width: unset;
+        }
+
+        .info-item {
+            flex-direction: row;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .download-info {
+            gap: 12px;
+        }
+
+        .info-item {
+            padding: 10px;
+            gap: 10px;
+        }
+
+        .info-icon {
+            font-size: 20px;
+        }
+
+        .info-content strong {
+            font-size: 12px;
+        }
+
+        .info-content p {
+            font-size: 11px;
+        }
+
+        .pdf-description {
+            font-size: 12px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+        }
+
+        .filter-select,
+        .pdf-select {
+            font-size: 13px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function getSem() {
+    return document.getElementById('semSelect').value;
+}
+
+function downloadExcel() {
+    window.location.href = '/teacher/download/excel?semester=' + getSem();
+}
+
+function downloadGunSlip() {
+    window.location.href = '/teacher/download/gunslip?semester=' + getSem();
+}
+
+function downloadParinam() {
+    window.location.href = '/teacher/download/parinam?semester=' + getSem();
+}
+
+function downloadPDF() {
+    var id = document.getElementById('studentSelect').value;
+    if (!id) {
+        showToast('⚠️ પ્રથમ વિદ્યાર્થી પસંદ કરો!');
+        return;
+    }
+    window.location.href = '/teacher/download/pdf/' + id;
+}
+</script>
+{% endblock %}
